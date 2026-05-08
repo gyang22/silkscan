@@ -1,0 +1,30 @@
+{
+  "name": "tangle016",
+  "pixels_per_mm": 3.4,
+  "mm_per_frame": 0.06728487672359436,
+  "sweeps": [
+    {
+      "id": "sweep1",
+      "video_path": "sweep1.mp4",
+      "rotation_angle_deg": 0.0
+    },
+    {
+      "id": "sweep2",
+      "video_path": "sweep2.mp4",
+      "rotation_angle_deg": 120.0
+    },
+    {
+      "id": "sweep3",
+      "video_path": "sweep3.mp4",
+      "rotation_angle_deg": 240.0
+    }
+  ],
+  "crop_box_mm": {
+    "x_min": -48.0,
+    "x_max": 48.0,
+    "y_min": -48.0,
+    "y_max": 48.0,
+    "z_min": 60.0,
+    "z_max": 350.0
+  }
+}

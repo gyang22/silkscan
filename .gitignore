@@ -1,0 +1,19 @@
+/target
+.DS_Store
+
+# Heavy data files
+*.mp4
+*.mov
+*.avi
+*.pcd
+*.npy
+.cache/
+**/__pycache__/
+
+# Python environment
+.venv/
+venv/
+*.pyc
+
+# Notebook checkpoints
+.ipynb_checkpoints/

@@ -1,0 +1,44 @@
+# Silkscan Prototype Pipeline
+
+This repository contains the prototype implementation of the Silkscan 3D reconstruction pipeline. The pipeline processes multiple video sweeps of a spider web (or similar thin filamentous structure) captured under controlled lighting and motion, and reconstructs a highly accurate, deduplicated 3D point cloud.
+
+Below is a detailed breakdown of the algorithms used in the pipeline.
+
+## 1. Subpixel Line Detection (Steger's Method)
+**Function:** `stegers_line_detection`
+
+To achieve high-fidelity 3D reconstruction, we must localize the sub-pixel center of the silk strands in each 2D frame. We use a modified version of Steger's algorithm for unbiased extraction of curvilinear structures:
+- **Hessian Matrix:** We compute the Hessian matrix (second-order partial derivatives) of the image using Gaussian derivatives (`sigma=0.5`). 
+- **Eigen-Decomposition:** The eigenvalues and eigenvectors of the Hessian matrix are computed. The eigenvector corresponding to the largest absolute eigenvalue ($\lambda_1$) gives the normal vector $n = (n_r, n_c)$ perpendicular to the line direction.
+- **Subpixel Offset:** We compute the first derivative (gradient $g$) using the same Gaussian derivative scheme. By finding the root of the 1D Taylor polynomial along the normal vector, we calculate the subpixel offset $t = -(g \cdot n) / \lambda_1$. This offset is added to the integer pixel coordinates.
+- **Dual-Thresholding (Hysteresis Prep):** To avoid compromising between faint details and background noise, every pixel is evaluated against two sets of gates. We retain all pixels passing extremely relaxed thresholds (`intensity_threshold`, `strength_threshold`), but simultaneously tag points that pass strict thresholds (`high_intensity_threshold`, `high_strength_threshold`) as "High Confidence Seeds".
+
+## 2. Temporal Coherence Filtering (Hysteresis Tracking)
+**Function:** `temporal_coherence_filter`
+
+Because dust, sensor noise, and lighting artifacts can cause false-positive line detections in isolated frames, we enforce a *persistence* constraint across time using a Spatio-Temporal Hysteresis Tracking paradigm:
+- **Spatial Nearest Neighbors:** For each frame, we use a KD-Tree to query all points (both low and high confidence) in the subsequent $N$ frames (`max_gap_frames`). If points in neighboring frames are within a specified `spatial_radius`, they are considered part of the same physical strand.
+- **Connected Components:** We use a Disjoint Set Union (Union-Find) data structure to group these temporally adjacent points into connected components.
+- **Hysteresis Filtering:** Components that do not persist for at least `persistence_min_frames` are discarded. Crucially, a component is only kept if it contains at least one **High Confidence Seed**. This allows us to track incredibly faint geometry (that only passes the low-confidence gates) as long as it physically connects to a bright anchor in an adjacent frame, while simultaneously deleting isolated specks of background noise.
+
+## 3. 3D Volume Assembly & Projection
+**Function:** `SweepProcessor._assemble_volume`
+
+Once the 2D detections are filtered, they are projected into a 3D coordinate space:
+- **Z-Axis Progression:** The depth ($Z$) is linearly interpolated based on the frame index and the physical sweep rate (`mm_per_frame`).
+- **Camera-to-World Projection:** The 2D pixel coordinates $(u, v)$ are converted into physical camera-space coordinates ($X_{cam}, Y_{cam}$) using the `pixels_per_mm` scale factor. 
+- **Sweep Rotation Transformation:** Because the web is captured from multiple sweeps at different rotation angles around a central vertical axis, we apply a 2D rotation matrix to the $(X_{cam}, Y_{cam})$ coordinates based on the sweep's `rotation_angle_deg`. This aligns all sweeps into a shared, absolute World Coordinate System.
+
+## 4. Multi-Sweep Registration & Adaptive Visual Hull
+**Function:** `SweepMerger._register_sweeps` and `SweepMerger._apply_visual_hull_crop`
+
+Despite the mathematical rotation in the previous step, slight physical misalignments in the scanning apparatus can cause discrepancies between the sweeps.
+- **Iterative Closest Point (ICP):** We use Point-to-Point ICP to compute a rigid 4x4 transformation matrix that finely aligns each subsequent sweep point cloud to the first sweep. 
+- **Adaptive Visual Hull Cropping:** Global noise from background objects can contaminate individual sweeps. After registration, we project each sweep's point cloud onto the 2D ground plane and calculate its Convex Hull. Using a Delaunay Triangulation for fast point-in-polygon testing, the final merged point cloud is intersected against *every* sweep's convex hull. If a point falls outside the visual hull of any sweep, it means it exists in a region that the sweep definitively saw as empty space, and it is deleted as noise. 
+
+## 5. Point Cloud Deduplication (Non-Maximum Suppression)
+**Function:** `SweepMerger._deduplicate_union`
+
+After merging multiple sweeps into a single point cloud, physical strands captured by multiple sweeps will result in dense clusters of duplicate points.
+- **Non-Maximum Suppression (NMS):** We sort all points in the merged cloud descending by their calculated line strength.
+- **Radius Suppression:** Iterating through the sorted list, we keep the strongest point and use a KD-Tree to find and suppress (delete) all neighboring points within a `dedup_radius_mm`. This leaves a clean, single-point-thick representation of the web geometry.
