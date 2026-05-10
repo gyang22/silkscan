@@ -5,33 +5,37 @@ nb = nbf.v4.new_notebook()
 
 # Imports for the notebook
 cell_imports = """import os, sys, cv2
-sys.path.append(os.path.abspath('.'))
-import silkscan_proto, open3d as o3d, numpy as np, matplotlib.pyplot as plt
+import silkscan, open3d as o3d, numpy as np, matplotlib.pyplot as plt
 from tqdm import tqdm
 from scipy.ndimage import uniform_filter1d
 
-# Our compartmentalized logic
-from caching import get_brightness_cached, get_sum_image_cached
-from quad_detection import detect_quad_rotated
+# Our compartmentalized logic from the silkscan package
+from silkscan import (
+    get_brightness_cached, get_sum_image_cached, 
+    detect_quad_rotated, SweepProcessor, SweepMerger
+)
 from notebook_utils import plot_diagnostic_row
 
 %matplotlib inline"""
 
-cell_load = """capture_set = silkscan_proto.load_capture_set('../scans/tangle016')
+
+cell_load = """capture_set = silkscan.load_capture_set('../scans/tangle016')
 print(f'Loaded {capture_set.name} with {len(capture_set.sweeps)} sweeps.')"""
 
-cell_config = """config_steger = silkscan_proto.Config(
+
+cell_config = """config_steger = silkscan.Config(
     method='steger', intensity_threshold=0.05, strength_threshold=0.002,
     high_intensity_threshold=0.15, high_strength_threshold=0.015,
     sigma=0.5, persistence_min_frames=5, temporal_spatial_radius=2.0,
     spatial_2d_min_length_px=20, temporal_stack_frames=5,
     dedup_radius_mm=0.5, icp_voxel_size=2.0, icp_distance_threshold=5.0,
     box_crop_padding_px=25)
-config_thresh = silkscan_proto.Config(
+config_thresh = silkscan.Config(
     method='threshold', intensity_threshold=0.15,
     persistence_min_frames=5, temporal_spatial_radius=2.0,
     dedup_radius_mm=0.5, icp_voxel_size=2.0, icp_distance_threshold=5.0,
     box_crop_padding_px=25)
+
 output_dir = '../scans/tangle016'
 os.makedirs(output_dir, exist_ok=True)
 cache_dir = os.path.join(output_dir, '.cache')
@@ -106,19 +110,20 @@ manual_override_code = """# Manual adjustment if needed
 # quad_vertices['sweep1'] = [[500, 50], [1300, 60], [1350, 750], [450, 740]]"""
 
 process_code = r"""def run_pipeline(config, suffix):
-    processor = silkscan_proto.SweepProcessor(config)
-    merger = silkscan_proto.SweepMerger(config)
+    processor = SweepProcessor(config)
+    merger = SweepMerger(config)
     sweep_pcds = []
     print(f"\n--- Running Pipeline for {config.method} ---")
     for sweep_info in capture_set.sweeps:
         vid_path = os.path.join(capture_set.directory, sweep_info['video_path'])
         manual_quad = quad_vertices.get(sweep_info['id'])
         pcd_data = processor.process_video(vid_path, sweep_info, capture_set.manifest, override_mask_poly=manual_quad)
-        silkscan_proto.save_pcd(pcd_data, os.path.join(output_dir, f"{sweep_info['id']}_{suffix}.pcd"))
+        silkscan.save_pcd(pcd_data, os.path.join(output_dir, f"{sweep_info['id']}_{suffix}.pcd"))
         sweep_pcds.append(pcd_data)
     final = merger.merge_sweeps(sweep_pcds, capture_set.manifest)
-    silkscan_proto.save_pcd(final, os.path.join(output_dir, f'tangle016_clean_{suffix}.pcd'))
+    silkscan.save_pcd(final, os.path.join(output_dir, f'tangle016_clean_{suffix}.pcd'))
     return len(final)
+
 
 run_pipeline(config_steger, "steger")
 run_pipeline(config_thresh, "thresh")"""
