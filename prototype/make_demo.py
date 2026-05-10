@@ -5,6 +5,10 @@ nb = nbf.v4.new_notebook()
 
 # Imports for the notebook
 cell_imports = """import os, sys, cv2
+# Add the root directory to sys.path so we can find the silkscan package 
+# if it's not installed in the current environment.
+sys.path.append(os.path.abspath('..'))
+
 import silkscan, open3d as o3d, numpy as np, matplotlib.pyplot as plt
 from tqdm import tqdm
 from scipy.ndimage import uniform_filter1d
@@ -17,6 +21,7 @@ from silkscan import (
 from notebook_utils import plot_diagnostic_row
 
 %matplotlib inline"""
+
 
 
 cell_load = """capture_set = silkscan.load_capture_set('../scans/tangle016')
@@ -157,5 +162,10 @@ nb['cells'] = [
     nbf.v4.new_code_cell(viz_code),
 ]
 
-with open('demo.ipynb', 'w') as f:
+script_dir = os.path.dirname(os.path.abspath(__file__))
+output_path = os.path.join(script_dir, 'demo.ipynb')
+
+with open(output_path, 'w') as f:
     nbf.write(nb, f)
+print(f"Notebook generated at {output_path}")
+

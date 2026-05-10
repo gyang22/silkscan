@@ -34,11 +34,14 @@ def get_brightness_cached(sweep_id, vid_path, cache_dir, step=5):
 def get_sum_image_cached(sweep_id, vid_path, start_frame, end_frame, cache_dir, step=5):
     """
     Computes temporal sum of frames and caches it.
+    The cache is keyed only by sweep_id and step to be less sensitive to 
+    slight variations in the detected start/end frames.
     """
-    cache_file = os.path.join(cache_dir, f'{sweep_id}_sum_f{start_frame}-{end_frame}_s{step}.npy')
+    cache_file = os.path.join(cache_dir, f'{sweep_id}_sum_s{step}.npy')
     
     if os.path.exists(cache_file):
         return np.load(cache_file)
+
     
     cap = cv2.VideoCapture(vid_path)
     w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))

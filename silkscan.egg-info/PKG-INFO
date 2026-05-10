@@ -14,11 +14,105 @@ Requires-Dist: tqdm
 Provides-Extra: dev
 Requires-Dist: jupyter; extra == "dev"
 
-# Silkscan Prototype Pipeline
+# Silkscan 3D Reconstruction Pipeline
 
-This repository contains the prototype implementation of the Silkscan 3D reconstruction pipeline. The pipeline processes multiple video sweeps of a spider web (or similar thin filamentous structure) captured under controlled lighting and motion, and reconstructs a highly accurate, deduplicated 3D point cloud.
+This repository contains the implementation of the Silkscan 3D reconstruction pipeline. The pipeline processes multiple video sweeps of a spider web (or similar thin filamentous structure) captured under controlled lighting and motion, and reconstructs a highly accurate, deduplicated 3D point cloud.
+
+## Installation
+
+You can install the Python package directly from the source:
+
+```bash
+pip install .
+```
+
+For development mode (where changes to the code are reflected immediately):
+
+```bash
+pip install -e .
+```
+
+## Quick Start
+
+### 1. Automatic Cropping (Quad Detection)
+
+The pipeline can automatically detect the scan boundaries by analyzing a "sum image" of the sweep. You can use the built-in caching utilities to efficiently compute the brightness profile and the sum image.
+
+```python
+import silkscan
+import os
+import numpy as np
+
+# Setup paths
+vid_path = "scans/tangle016/video_0.mp4"
+cache_dir = "scans/tangle016/.cache"
+os.makedirs(cache_dir, exist_ok=True)
+
+# 1. Get brightness profile to find the active frame range
+# (Step=5 processes every 5th frame for speed)
+frame_idx, brightness = silkscan.get_brightness_cached("sweep0", vid_path, cache_dir, step=5)
+
+# 2. Find start/end frames where the laser is active (simple thresholding)
+thresh = np.median(brightness) + 0.2 * (brightness.max() - np.median(brightness))
+active_indices = np.where(brightness > thresh)[0]
+start_f, end_f = int(frame_idx[active_indices[0]]), int(frame_idx[active_indices[-1]])
+
+# 3. Compute/Load the sum image for that range
+sum_image = silkscan.get_sum_image_cached("sweep0", vid_path, start_f, end_f, cache_dir)
+
+# 4. Detect the rotated quad (scan boundary)
+result = silkscan.detect_quad_rotated(sum_image, pad=20)
+quad_vertices = result['quad']
+
+print(f"Detected quad angle: {result['best_angle']:.2f} degrees")
+print(f"Quad vertices (pixel space):\n{quad_vertices}")
+```
+
+
+### 2. Running the Full Pipeline
+The package provides high-level classes to process capture sets:
+
+```python
+import silkscan
+
+# 1. Load a capture set (expects a directory with manifest.json and videos)
+capture_set = silkscan.load_capture_set('scans/tangle016')
+
+# 2. Configure the pipeline
+config = silkscan.Config(
+    method='steger', 
+    intensity_threshold=0.05,
+    persistence_min_frames=5
+)
+
+# 3. Process sweeps
+processor = silkscan.SweepProcessor(config)
+sweep_pcds = []
+for sweep_info in capture_set.sweeps:
+    pcd_data = processor.process_video('path/to/video.mp4', sweep_info, capture_set.manifest)
+    sweep_pcds.append(pcd_data)
+
+# 4. Merge results
+merger = silkscan.SweepMerger(config)
+final_pcd = merger.merge_sweeps(sweep_pcds, capture_set.manifest)
+
+# 5. Save output
+silkscan.save_pcd(final_pcd, 'reconstructed_web.pcd')
+```
+
+### 3. Visualizing Results
+You can use the provided utility script to view `.pcd` files:
+
+```bash
+python view_pcd.py reconstructed_web.pcd
+```
+
+---
+
+## Algorithm Breakdown
 
 Below is a detailed breakdown of the algorithms used in the pipeline.
+
 
 ## 1. Subpixel Line Detection (Steger's Method)
 **Function:** `stegers_line_detection`
