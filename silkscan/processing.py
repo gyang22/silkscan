@@ -26,8 +26,8 @@ class SweepProcessor:
         if override_mask_poly is not None:
             pixel_poly = np.array(override_mask_poly, dtype=np.int32)
         else:
-            xn, xx = crop.get("x_min", -np.inf), crop.get("x_max", np.inf)
-            yn, yx = crop.get("y_min", -np.inf), crop.get("y_max", np.inf)
+            xn, xx = crop.get("x_min", -1e6), crop.get("x_max", 1e6)
+            yn, yx = crop.get("y_min", -1e6), crop.get("y_max", 1e6)
             wc = np.array([[xn, yn], [xx, yn], [xx, yx], [xn, yx]])
             ct, st = np.cos(-rot_rad), np.sin(-rot_rad)
             cx = wc[:, 0] * ct - wc[:, 1] * st; cy = wc[:, 0] * st + wc[:, 1] * ct
@@ -37,7 +37,7 @@ class SweepProcessor:
         cv2.fillPoly(proj_mask, [pixel_poly], 1.0)
         
         # Adaptive background subtraction
-        z_min, z_max = crop.get("z_min", -np.inf), crop.get("z_max", np.inf)
+        z_min, z_max = crop.get("z_min", -1e6), crop.get("z_max", 1e6)
         f_start = max(start_frame, int(np.ceil(z_min / mpf))); f_end = min(start_frame + p_count - 1, int(np.floor(z_max / mpf)))
         if f_end > f_start:
             samples = []

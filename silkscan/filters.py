@@ -25,7 +25,7 @@ def temporal_coherence_filter(frames_detections, min_frames=2, spatial_radius=2.
             n_f = f + k
             if n_f >= num_frames or trees[n_f] is None: continue
             idxs = trees[n_f].query_ball_point(active_pts, r=spatial_radius * k)
-            if idxs:
+            if len(idxs) > 0:
                 flat = np.fromiter(itertools.chain.from_iterable(idxs), dtype=int)
                 if len(flat) > 0: kept[n_f][flat] = True
                     
@@ -37,7 +37,7 @@ def temporal_coherence_filter(frames_detections, min_frames=2, spatial_radius=2.
             n_f = f - k
             if n_f < 0 or trees[n_f] is None: continue
             idxs = trees[n_f].query_ball_point(active_pts, r=spatial_radius * k)
-            if idxs:
+            if len(idxs) > 0:
                 flat = np.fromiter(itertools.chain.from_iterable(idxs), dtype=int)
                 if len(flat) > 0: kept[n_f][flat] = True
                     

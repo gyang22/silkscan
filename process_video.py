@@ -14,7 +14,7 @@ def main():
     parser.add_argument("video_path", type=str, help="Path to the input video file (e.g., scan.mp4).")
     parser.add_argument("-o", "--output", type=str, default="output.pcd", help="Path to save the resulting .pcd file. Default is 'output.pcd'.")
     parser.add_argument("--mm-per-frame", type=float, default=0.1, help="Millimeters traveled per frame. Default is 0.1.")
-    parser.add_argument("--pixels-per-mm", type=float, default=1.0, help="Pixels per millimeter scale. Default is 1.0.")
+    parser.add_argument("--pixels-per-mm", type=float, default=3.4, help="Pixels per millimeter scale. Default is 3.4.")
     parser.add_argument("--start-frame", type=int, default=0, help="Frame to start processing from. Default is 0.")
     parser.add_argument("--max-frames", type=int, default=None, help="Maximum number of frames to process. Default is all frames.")
     

@@ -2,7 +2,7 @@
 
 Welcome to the Silkscan pipeline! This tutorial is designed for users who want to quickly process a video file and convert it into a 3D point cloud without writing any code.
 
-We've provided a simple command-line tool, `process_video.py`, which handles all the complicated settings for you.
+We've provided a simple Graphical User Interface (GUI), `silkscan_gui.py`, which handles all the complicated settings, cropping, and visualization for you.
 
 ---
 
@@ -18,68 +18,46 @@ Before you begin, ensure you have the following ready:
 
 ---
 
-## 2. Processing Your Video
+## 2. Launching the Interface
 
-The `process_video.py` script requires only one thing: the path to your video file.
-
-### The Basic Command
-To run the script with the default, highly-optimized settings, simply type:
+To open the graphical interface, run the following command in your terminal:
 
 ```bash
-python process_video.py path/to/your/video.mp4
+python silkscan_gui.py
 ```
 
-*Replace `path/to/your/video.mp4` with the actual location of your video file.*
-
-### Changing the Output Name
-By default, the script saves your 3D model as `output.pcd` in the same folder. If you want to give it a specific name, use the `-o` (or `--output`) option:
-
-```bash
-python process_video.py path/to/your/video.mp4 -o my_3d_model.pcd
-```
-
-### Advanced Options (Optional)
-If you know the physical scale of your camera setup, you can adjust these settings. Otherwise, it is safe to ignore them.
-*   `--mm-per-frame`: How many millimeters the camera moves between each video frame (Default: 0.1).
-*   `--pixels-per-mm`: The scale of pixels to millimeters (Default: 1.0).
-
-**Example:**
-```bash
-python process_video.py my_scan.mp4 -o my_3d_model.pcd --mm-per-frame 0.2
-```
+A window titled **"Silkscan 3D Reconstruction"** will pop up.
 
 ---
 
-## 3. Viewing Your 3D Model
+## 3. Processing Your Video
 
-Once the script finishes processing, you will have a `.pcd` (Point Cloud Data) file. 
+1.  **Select Video:** Click the **"Browse"** button next to the *Video File* field and select your `.mp4` scan.
+    *   *Smart Scaling:* If you have a `manifest.json` file in the same folder as your video (which defines the physical scale of your camera setup), the GUI will automatically detect it and fill in the correct **Scaling Parameters** for you!
+2.  **Output Location:** The GUI will automatically suggest saving the 3D model as a `.pcd` file next to your video. You can click "Browse" to change the location or name.
+3.  **Options:**
+    *   **Enable Auto-Cropping:** Leave this checked! The tool will automatically detect the borders of the capture box and mask out background noise before processing.
+    *   **Auto-Crop Padding (px):** Adjust this if the background mask is too tight or too loose around your spider web.
+4.  **Run:** Click **"Start Processing"**. 
 
-You cannot open this file with a standard photo viewer. You need specialized software. We recommend **MeshLab** or **CloudCompare**, which are both free and easy to use.
+*Note: Processing a full video can take several minutes. You can monitor the progress directly in the black console window at the bottom of the GUI!*
 
-### Viewing with MeshLab
+---
+
+## 4. Viewing Your 3D Model
+
+When processing finishes, the **"Visualize Result"** button next to "Start Processing" will light up. Click it to launch an interactive 3D viewer. You can use your mouse to click, drag, and rotate the 3D model!
+
+If you want to view the `.pcd` file later, you can use specialized 3D software like **MeshLab** or **CloudCompare** (both are free).
 1. Download and install [MeshLab](https://www.meshlab.net/).
 2. Open MeshLab.
-3. Go to `File` -> `Import Mesh...` (or just drag and drop the `.pcd` file into the window).
-4. You can now use your mouse to click and drag to rotate the 3D model!
-
-### Viewing with Python (Open3D)
-If you have Open3D installed, you can quickly view it from the command line by running:
-```bash
-python -c "import open3d as o3d; pcd = o3d.io.read_point_cloud('output.pcd'); o3d.visualization.draw_geometries([pcd])"
-```
+3. Go to `File` -> `Import Mesh...` and select your `.pcd` file.
 
 ---
 
-## 4. Troubleshooting
+## 5. Troubleshooting
 
-*   **Error: "The video file was not found."**
-    Make sure you spelled the path to the video file correctly. If the video is in another folder, you must provide the full path (e.g., `/Users/name/Desktop/video.mp4`).
-
-*   **Error: "ModuleNotFoundError: No module named 'cv2'"** (or similar)
-    This means your Python environment doesn't have the required packages installed. Ensure you have installed the requirements, typically by running:
-    ```bash
-    pip install -r prototype/requirements.txt
-    ```
-
+*   **Error: "ModuleNotFoundError: No module named 'tkinter'"**
+    Tkinter is usually included with Python, but if you get this error, you may need to install it via your package manager (e.g., `brew install python-tk` on Mac).
 *   **The point cloud looks stretched or flat.**
-    This usually means the `--mm-per-frame` parameter is incorrect for your specific video. Try adjusting this number higher or lower when you run the script.
+    This means your scaling parameters (`mm / frame` or `pixels / mm`) are incorrect. If you didn't have a `manifest.json`, you will need to manually adjust these values in the GUI based on your physical camera setup.
