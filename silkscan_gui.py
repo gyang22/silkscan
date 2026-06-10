@@ -42,12 +42,14 @@ class SilkscanGUI:
         # Variables
         self.video_path_var = tk.StringVar()
         self.output_path_var = tk.StringVar(value=os.path.abspath("output.pcd"))
-        self.mm_per_frame_var = tk.DoubleVar(value=0.1)
+        self.mm_per_frame_var = tk.DoubleVar(value=0.067285)
         self.pixels_per_mm_var = tk.DoubleVar(value=3.4)
         self.start_frame_var = tk.IntVar(value=0)
         self.max_frames_var = tk.StringVar(value="") # Empty means all
         self.auto_crop_var = tk.BooleanVar(value=True)
-        self.crop_padding_var = tk.IntVar(value=25)
+        self.crop_padding_var = tk.IntVar(value=50)
+        self.method_var = tk.StringVar(value="Threshold")
+        self.launch_editor_data = None
         
         self.create_widgets()
 
@@ -100,15 +102,18 @@ class SilkscanGUI:
         ttk.Label(crop_pad_frame, text="Auto-Crop Padding (px):").pack(side=tk.LEFT)
         ttk.Entry(crop_pad_frame, textvariable=self.crop_padding_var, width=10).pack(side=tk.LEFT, padx=5)
 
+        method_frame = ttk.Frame(options_frame)
+        method_frame.grid(row=2, column=0, sticky=tk.W, pady=2)
+        ttk.Label(method_frame, text="Extraction Method:").pack(side=tk.LEFT)
+        method_cb = ttk.Combobox(method_frame, textvariable=self.method_var, values=["Steger", "Threshold"], state="readonly", width=15)
+        method_cb.pack(side=tk.LEFT, padx=5)
+
         # --- Run Button & Status ---
         btn_frame = ttk.Frame(main_frame)
         btn_frame.grid(row=6, column=0, columnspan=3, pady=10)
         
-        self.run_btn = ttk.Button(btn_frame, text="Start Processing", command=self.start_processing, style="Accent.TButton")
+        self.run_btn = ttk.Button(btn_frame, text="Start Processing & Open Editor", command=self.start_processing, style="Accent.TButton")
         self.run_btn.pack(side=tk.LEFT, padx=5)
-        
-        self.vis_btn = ttk.Button(btn_frame, text="Visualize Result", command=self.visualize_pcd, state=tk.DISABLED)
-        self.vis_btn.pack(side=tk.LEFT, padx=5)
 
         self.status_var = tk.StringVar(value="Ready")
         self.status_label = ttk.Label(main_frame, textvariable=self.status_var, font=("Helvetica", 10, "italic"))
@@ -175,18 +180,6 @@ class SilkscanGUI:
 
     def process_video_thread(self, video_path):
         try:
-            # Set up optimized config
-            config = silkscan.Config(
-                method='steger', 
-                intensity_threshold=0.05, strength_threshold=0.002,
-                high_intensity_threshold=0.15, high_strength_threshold=0.015,
-                sigma=0.5, persistence_min_frames=5, temporal_spatial_radius=2.0,
-                spatial_2d_min_length_px=20, temporal_stack_frames=5,
-                box_crop_padding_px=self.crop_padding_var.get()
-            )
-
-            processor = SweepProcessor(config)
-
             manifest = {
                 'pixels_per_mm': self.pixels_per_mm_var.get(),
                 'mm_per_frame': self.mm_per_frame_var.get(),
@@ -217,28 +210,52 @@ class SilkscanGUI:
                 
                 accum = get_sum_image_cached(sweep_info['id'], video_path, self.start_frame_var.get(), end_frame, cache_dir, step=30)
                 if accum is not None:
-                    override_mask_poly = detect_quad_rotated(accum, pad=config.box_crop_padding_px)['quad']
+                    res = detect_quad_rotated(accum, pad=self.crop_padding_var.get())
+                    override_mask_poly = res['quad']
+                    print(f"Auto-Crop found best angle: {res['best_angle']:.1f} degrees")
+                    print(f"Auto-Crop bounds (xl, xr, yt, yb): {res['xl']:.1f}, {res['xr']:.1f}, {res['yt']:.1f}, {res['yb']:.1f}")
                 else:
                     self.status_var.set("Warning: Auto-Crop failed. Processing full image.")
 
-            self.status_var.set("Extracting 3D Point Cloud. Please wait...")
-
-            pcd_data = processor.process_video(
-                video_path, 
-                sweep_info, 
-                manifest, 
-                start_frame=self.start_frame_var.get(), 
-                max_frames=max_frames,
-                override_mask_poly=override_mask_poly
-            )
-            
+            method = self.method_var.get()
             output_path = self.output_path_var.get()
             os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
-            silkscan.save_pcd(pcd_data, output_path)
-
-            self.status_var.set(f"Done! Saved {len(pcd_data)} points to {os.path.basename(output_path)}")
             
-            self.root.after(0, self.on_processing_complete)
+            if method == "Steger":
+                self.status_var.set("Extracting 3D Point Cloud (Steger). Please wait...")
+                config = silkscan.Config(
+                    method='steger', 
+                    intensity_threshold=0.05, strength_threshold=0.002,
+                    high_intensity_threshold=0.15, high_strength_threshold=0.015,
+                    sigma=0.5, persistence_min_frames=5, temporal_spatial_radius=2.0,
+                    spatial_2d_min_length_px=20, temporal_stack_frames=5,
+                    box_crop_padding_px=self.crop_padding_var.get()
+                )
+                processor = SweepProcessor(config)
+                pcd_data = processor.process_video(
+                    video_path, sweep_info, manifest, 
+                    start_frame=self.start_frame_var.get(), max_frames=max_frames, override_mask_poly=override_mask_poly
+                )
+                self.launch_editor_data = (pcd_data, method, output_path)
+            
+            elif method == "Threshold":
+                import numpy as np
+                self.status_var.set(f"Extracting base Point Cloud (Threshold 0.15). Please wait...")
+                config = silkscan.Config(
+                    method='threshold', 
+                    intensity_threshold=0.15,
+                    persistence_min_frames=5, temporal_spatial_radius=2.0,
+                    spatial_2d_min_length_px=20, temporal_stack_frames=5,
+                    box_crop_padding_px=self.crop_padding_var.get()
+                )
+                processor = SweepProcessor(config)
+                base_pcd = processor.process_video(
+                    video_path, sweep_info, manifest, 
+                    start_frame=self.start_frame_var.get(), max_frames=max_frames, override_mask_poly=override_mask_poly
+                )
+                self.launch_editor_data = (base_pcd, method, output_path)
+            
+            self.root.after(0, self.on_processing_complete_and_launch)
             
         except Exception as e:
             import traceback
@@ -250,34 +267,42 @@ class SilkscanGUI:
             sys.stderr = self.old_stderr
             self.root.after(0, lambda: self.run_btn.config(state=tk.NORMAL))
 
-    def on_processing_complete(self):
-        self.vis_btn.config(state=tk.NORMAL)
-        self.status_var.set("Finished.")
+    def on_processing_complete_and_launch(self):
+        self.status_var.set("Finished processing. Launching 3D Editor...")
+        self.root.destroy()
 
-    def visualize_pcd(self):
-        output_path = self.output_path_var.get()
-        if not os.path.exists(output_path):
-            messagebox.showerror("Error", "Output file not found.")
-            return
-            
-        try:
-            import open3d as o3d
-            pcd = o3d.io.read_point_cloud(output_path)
-            
-            # Close the GUI window to prevent macOS OpenGL runloop conflicts
-            self.root.destroy()
-            
-            # Launch Open3D visualization safely
-            o3d.visualization.draw_geometries([pcd])
-        except Exception as e:
-            print(f"Visualization Error: {e}")
+def run_o3d_editor(pcd_array, method, output_path):
+    import subprocess
+    import numpy as np
+    
+    editor_script = os.path.join(os.path.dirname(__file__), 'silkscan', 'o3d_editor_app.py')
+    
+    try:
+        import open3d.visualization.gui as gui
+        python_exe = sys.executable
+    except ModuleNotFoundError:
+        print("Warning: open3d.visualization.gui not found in your conda environment.")
+        print("Falling back to system python3 to launch the 3D editor...")
+        python_exe = "/usr/local/bin/python3"
+        
+    temp_data = output_path + ".temp.npy"
+    np.save(temp_data, pcd_array)
+    
+    try:
+        subprocess.run([python_exe, editor_script, temp_data, method, output_path])
+    finally:
+        if os.path.exists(temp_data):
+            os.remove(temp_data)
 
 if __name__ == "__main__":
     root = tk.Tk()
     
-    # Optional styling
     style = ttk.Style()
     style.theme_use('clam')
     
     app = SilkscanGUI(root)
     root.mainloop()
+
+    if app.launch_editor_data is not None:
+        pcd_data, method, output_path = app.launch_editor_data
+        run_o3d_editor(pcd_data, method, output_path)

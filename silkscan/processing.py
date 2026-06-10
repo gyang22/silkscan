@@ -77,7 +77,11 @@ class SweepProcessor:
                 gray = np.clip(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY).astype(np.float32)/255.0 * proj_mask - bg_median, 0, 1)
                 all_dets.append(self._detect(gray))
         cap.release()
-        filtered = temporal_coherence_filter(all_dets, min_frames=self.config.persistence_min_frames, spatial_radius=self.config.temporal_spatial_radius, max_gap_frames=self.config.temporal_max_gap_frames)
+        if self.config.method == 'steger':
+            filtered = temporal_coherence_filter(all_dets, min_frames=self.config.persistence_min_frames, spatial_radius=self.config.temporal_spatial_radius, max_gap_frames=self.config.temporal_max_gap_frames)
+        else:
+            filtered = all_dets
+            
         pcd = self._assemble(filtered, manifest, sweep_info, width, height)
         return self._adaptive_spatial_crop(pcd) if len(pcd) > 100 else pcd
 
@@ -102,7 +106,7 @@ class SweepProcessor:
             u, v, ints, strs, _, _, pers = dets.T
             cam_y = (v - py) / ppm; cam_x = (u - px) / ppm; world_z = f * mpf
             wx = cam_x * np.cos(rot_rad) - cam_y * np.sin(rot_rad); wy = cam_x * np.sin(rot_rad) + cam_y * np.cos(rot_rad)
-            for i in range(len(dets)): pts.append([wx[i], wy[i], world_z, 0.0, f, u[i], v[i], strs[i], pers[i]])
+            for i in range(len(dets)): pts.append([wx[i], wy[i], world_z, ints[i], f, u[i], v[i], strs[i], pers[i]])
         return np.array(pts) if pts else np.zeros((0, 9))
 
 class SweepMerger:

@@ -13,10 +13,11 @@ def main():
     parser = argparse.ArgumentParser(description="Process a single video file to create a 3D point cloud using the Silkscan pipeline.")
     parser.add_argument("video_path", type=str, help="Path to the input video file (e.g., scan.mp4).")
     parser.add_argument("-o", "--output", type=str, default="output.pcd", help="Path to save the resulting .pcd file. Default is 'output.pcd'.")
-    parser.add_argument("--mm-per-frame", type=float, default=0.1, help="Millimeters traveled per frame. Default is 0.1.")
+    parser.add_argument("--mm-per-frame", type=float, default=0.067285, help="Millimeters traveled per frame. Default is 0.067285.")
     parser.add_argument("--pixels-per-mm", type=float, default=3.4, help="Pixels per millimeter scale. Default is 3.4.")
     parser.add_argument("--start-frame", type=int, default=0, help="Frame to start processing from. Default is 0.")
     parser.add_argument("--max-frames", type=int, default=None, help="Maximum number of frames to process. Default is all frames.")
+    parser.add_argument("--crop-padding", type=int, default=50, help="Padding in pixels for the auto-crop mask. Default is 50.")
     
     args = parser.parse_args()
 
@@ -38,7 +39,8 @@ def main():
         persistence_min_frames=5, 
         temporal_spatial_radius=2.0,
         spatial_2d_min_length_px=20, 
-        temporal_stack_frames=5
+        temporal_stack_frames=5,
+        box_crop_padding_px=args.crop_padding
     )
 
     processor = SweepProcessor(config)
