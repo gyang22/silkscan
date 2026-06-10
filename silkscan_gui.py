@@ -236,6 +236,8 @@ class SilkscanGUI:
                     video_path, sweep_info, manifest, 
                     start_frame=self.start_frame_var.get(), max_frames=max_frames, override_mask_poly=override_mask_poly
                 )
+                silkscan.save_pcd(pcd_data, output_path)
+                self.status_var.set("Saved backup. Launching Editor...")
                 self.launch_editor_data = (pcd_data, method, output_path)
             
             elif method == "Threshold":
@@ -253,6 +255,12 @@ class SilkscanGUI:
                     video_path, sweep_info, manifest, 
                     start_frame=self.start_frame_var.get(), max_frames=max_frames, override_mask_poly=override_mask_poly
                 )
+                
+                base, ext = os.path.splitext(output_path)
+                backup_path = f"{base}_raw_backup{ext}"
+                silkscan.save_pcd(base_pcd, backup_path)
+                self.status_var.set(f"Saved raw backup to {os.path.basename(backup_path)}. Launching Editor...")
+                
                 self.launch_editor_data = (base_pcd, method, output_path)
             
             self.root.after(0, self.on_processing_complete_and_launch)
@@ -274,22 +282,39 @@ class SilkscanGUI:
 def run_o3d_editor(pcd_array, method, output_path):
     import subprocess
     import numpy as np
+    import os
+    import sys
     
     editor_script = os.path.join(os.path.dirname(__file__), 'silkscan', 'o3d_editor_app.py')
+    legacy_script = os.path.join(os.path.dirname(__file__), 'silkscan', 'legacy_editor_app.py')
     
     try:
         import open3d.visualization.gui as gui
         python_exe = sys.executable
+        use_legacy = False
     except ModuleNotFoundError:
         print("Warning: open3d.visualization.gui not found in your conda environment.")
-        print("Falling back to system python3 to launch the 3D editor...")
-        python_exe = "/usr/local/bin/python3"
+        print("Using robust Legacy Mode Editor...")
+        python_exe = sys.executable
+        use_legacy = True
         
     temp_data = output_path + ".temp.npy"
     np.save(temp_data, pcd_array)
     
     try:
-        subprocess.run([python_exe, editor_script, temp_data, method, output_path])
+        if not use_legacy:
+            result = subprocess.run([python_exe, editor_script, temp_data, method, output_path])
+            if result.returncode != 0:
+                print(f"\n================================")
+                print(f"CRASH DETECTED (Exit code: {result.returncode})")
+                print(f"The modern 3D Editor failed to launch on this computer.")
+                print(f"Automatically falling back to the robust Legacy Editor...")
+                print(f"================================\n")
+                use_legacy = True
+                
+        if use_legacy:
+            subprocess.run([sys.executable, legacy_script, temp_data, method, output_path])
+            
     finally:
         if os.path.exists(temp_data):
             os.remove(temp_data)

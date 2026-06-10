@@ -63,6 +63,10 @@ If you want to view the `.pcd` file later, you can use specialized 3D software l
 
 ## 5. Troubleshooting
 
+**"The program runs until the stacking is complete, then crashes!"**
+This is a known bug with `open3d` on certain macOS environments where the 3D graphics engine (Filament) fails to initialize and throws a segmentation fault (SIGSEGV).
+**The Fix:** We've implemented an automatic safety-net! If the modern editor crashes on your machine, the script will instantly save a raw backup of your 3D model and automatically launch a **Robust Legacy Editor Mode**. This legacy editor uses an older, crash-proof graphics engine, allowing you to seamlessly continue adjusting your boundaries and saving your files without losing any data!
+
 *   **Error: "ModuleNotFoundError: No module named 'tkinter'"**
     Tkinter is usually included with Python, but if you get this error, you may need to install it via your package manager (e.g., `brew install python-tk` on Mac).
 *   **The point cloud looks stretched or flat.**
