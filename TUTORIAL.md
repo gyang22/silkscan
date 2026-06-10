@@ -37,16 +37,22 @@ A window titled **"Silkscan 3D Reconstruction"** will pop up.
 2.  **Output Location:** The GUI will automatically suggest saving the 3D model as a `.pcd` file next to your video. You can click "Browse" to change the location or name.
 3.  **Options:**
     *   **Enable Auto-Cropping:** Leave this checked! The tool will automatically detect the borders of the capture box and mask out background noise before processing.
-    *   **Auto-Crop Padding (px):** Adjust this if the background mask is too tight or too loose around your spider web.
-4.  **Run:** Click **"Start Processing"**. 
+    *   **Auto-Crop Padding (px):** Adjust this if the background mask is too tight or too loose around your spider web. Default is 50.
+    *   **Extraction Method:** 
+        *   `Threshold`: A fast method that extracts based on pixel brightness. The tool will automatically extract a range of thresholds (`0.15` to `0.90`) for you to compare!
+        *   `Steger`: A highly-accurate but slower line-detection method. NOTE: this is experimental, may not be as consistent as the other method.
+4.  **Run:** Click **"Start Processing & Open Editor"**. 
 
 *Note: Processing a full video can take several minutes. You can monitor the progress directly in the black console window at the bottom of the GUI!*
 
 ---
 
-## 4. Viewing Your 3D Model
+## 4. Cropping and Saving Your 3D Model
 
-When processing finishes, the **"Visualize Result"** button next to "Start Processing" will light up. Click it to launch an interactive 3D viewer. You can use your mouse to click, drag, and rotate the 3D model!
+When processing finishes, the Tkinter window will close and an interactive **Silkscan Crop Editor** will automatically open.
+
+1. **Adjust Boundaries:** Use the sliders on the left (X, Y, and Z Min/Max) to trim off any remaining pieces of the capture box walls. The 3D model will instantly update as you drag!
+2. **Save Results:** Once your spider web is perfectly isolated, click **"Save All Thresholds"** (or "Save Cropped PCD" if using Steger). The editor will apply your exact bounding box crop and save your final 3D point cloud files to your selected output folder.
 
 If you want to view the `.pcd` file later, you can use specialized 3D software like **MeshLab** or **CloudCompare** (both are free).
 1. Download and install [MeshLab](https://www.meshlab.net/).
