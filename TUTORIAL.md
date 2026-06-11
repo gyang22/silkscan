@@ -9,18 +9,57 @@ We've provided a simple Graphical User Interface (GUI), `silkscan_gui.py`, which
 ## 1. Prerequisites
 
 Before you begin, ensure you have the following ready:
-1.  **Terminal Access:** You need to open your terminal (Terminal on Mac/Linux, or Command Prompt / PowerShell on Windows).
-2.  **A Video File:** Ensure you have the video file you want to process (e.g., `my_scan.mp4`) located somewhere on your computer.
-3.  **Correct Folder:** Ensure you are in the `silkscan` project directory in your terminal. You can navigate there using the `cd` command:
+1.  **Python 3.11:** This project is validated against **Python 3.11**. Check your version with `python3.11 --version`. (If you don't have it, download it from [python.org](https://www.python.org/downloads/) — the official installer includes `tkinter`, which the GUI needs.)
+2.  **Terminal Access:** You need to open your terminal (Terminal on Mac/Linux, or Command Prompt / PowerShell on Windows).
+3.  **A Video File:** Ensure you have the video file you want to process (e.g., `my_scan.mp4`) located somewhere on your computer.
+4.  **Correct Folder:** Ensure you are in the `silkscan` project directory in your terminal. You can navigate there using the `cd` command:
     ```bash
     cd path/to/silkscan
     ```
 
 ---
 
-## 2. Launching the Interface
+## 2. Setting Up a Virtual Environment (Do This First!)
 
-To open the graphical interface, run the following command in your terminal:
+A **virtual environment** (venv) is a private, self-contained folder that holds the *exact* package versions Silkscan needs, isolated from the rest of your system. **This step is essential:** the most common crash — the program reaching 100% on the stacking phase and then dying with a segmentation fault — is caused by mismatched library versions (especially `numpy` and `open3d`). Installing the pinned `requirements.txt` inside a venv guarantees every machine runs the same validated combination.
+
+You only need to do steps 1 and 3 **once**. After that, you just activate the environment (step 2) each time you open a new terminal.
+
+**1. Create the virtual environment** (creates a `.venv` folder in the project directory):
+```bash
+python3.11 -m venv .venv
+```
+
+**2. Activate it:**
+
+*   On **Mac / Linux**:
+    ```bash
+    source .venv/bin/activate
+    ```
+*   On **Windows** (PowerShell):
+    ```powershell
+    .venv\Scripts\Activate.ps1
+    ```
+*   On **Windows** (Command Prompt):
+    ```cmd
+    .venv\Scripts\activate.bat
+    ```
+
+Once active, your terminal prompt will be prefixed with `(.venv)`. This tells you the environment is on.
+
+**3. Install the exact dependencies** (only needed the first time, with the venv activated):
+```bash
+pip install -r requirements.txt
+```
+This downloads and installs the pinned versions listed in `requirements.txt`. It may take a few minutes.
+
+> **Important:** Every time you open a *new* terminal to run Silkscan, you must re-activate the environment (step 2) first. If your prompt doesn't show `(.venv)`, the program will fall back to your system's Python and may crash. To leave the environment when you're done, type `deactivate`.
+
+---
+
+## 3. Launching the Interface
+
+With your virtual environment **activated** (you should see `(.venv)` in your prompt), open the graphical interface by running:
 
 ```bash
 python silkscan_gui.py
@@ -30,7 +69,7 @@ A window titled **"Silkscan 3D Reconstruction"** will pop up.
 
 ---
 
-## 3. Processing Your Video
+## 4. Processing Your Video
 
 1.  **Select Video:** Click the **"Browse"** button next to the *Video File* field and select your `.mp4` scan.
     *   *Smart Scaling:* If you have a `manifest.json` file in the same folder as your video (which defines the physical scale of your camera setup), the GUI will automatically detect it and fill in the correct **Scaling Parameters** for you!
@@ -47,7 +86,7 @@ A window titled **"Silkscan 3D Reconstruction"** will pop up.
 
 ---
 
-## 4. Cropping and Saving Your 3D Model
+## 5. Cropping and Saving Your 3D Model
 
 When processing finishes, the Tkinter window will close and an interactive **Silkscan Crop Editor** will automatically open.
 
@@ -61,11 +100,16 @@ If you want to view the `.pcd` file later, you can use specialized 3D software l
 
 ---
 
-## 5. Troubleshooting
+## 6. Troubleshooting
 
-**"The program runs until the stacking is complete, then crashes!"**
-This is a known bug with `open3d` on certain macOS environments where the 3D graphics engine (Filament) fails to initialize and throws a segmentation fault (SIGSEGV).
-**The Fix:** We've implemented an automatic safety-net! If the modern editor crashes on your machine, the script will instantly save a raw backup of your 3D model and automatically launch a **Robust Legacy Editor Mode**. This legacy editor uses an older, crash-proof graphics engine, allowing you to seamlessly continue adjusting your boundaries and saving your files without losing any data!
+**"The program runs until the stacking is complete, then crashes (segmentation fault / SIGSEGV)!"**
+This is almost always caused by running with **mismatched library versions** (a `numpy`/`open3d` ABI conflict) outside of the project's virtual environment.
+**The Fix:** Make sure you followed **Section 2** and are running inside the activated `.venv` (your prompt shows `(.venv)`) with dependencies installed from `requirements.txt`. If you set the venv up before this fix was released, refresh it:
+```bash
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
+If the crash persists, delete the `.venv` folder and recreate it from scratch using the steps in Section 2 to guarantee a clean, pinned install.
 
 *   **Error: "ModuleNotFoundError: No module named 'tkinter'"**
     Tkinter is usually included with Python, but if you get this error, you may need to install it via your package manager (e.g., `brew install python-tk` on Mac).

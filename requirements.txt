@@ -1,0 +1,18 @@
+# Silkscan runtime dependencies — exact versions validated together.
+# Pinned to avoid the cross-machine Open3D/numpy ABI mismatch that caused
+# segfaults after the stacking phase. Install into a clean virtual environment
+# (see TUTORIAL.md) running Python 3.11.
+#
+#   python3.11 -m venv .venv
+#   source .venv/bin/activate      # Windows: .venv\Scripts\activate
+#   pip install -r requirements.txt
+
+numpy==2.4.4
+scipy==1.17.1
+opencv-python==4.13.0.92
+open3d==0.19.0
+scikit-image==0.26.0
+tqdm==4.67.3
+
+# Note: tkinter ships with the standard CPython installer and is NOT a pip
+# package. On macOS Homebrew Python, install it with: brew install python-tk
