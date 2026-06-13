@@ -111,7 +111,11 @@ pip install -r requirements.txt
 ```
 If the crash persists, delete the `.venv` folder and recreate it from scratch using the steps in Section 2 to guarantee a clean, pinned install.
 
-*   **Error: "ModuleNotFoundError: No module named 'tkinter'"**
-    Tkinter is usually included with Python, but if you get this error, you may need to install it via your package manager (e.g., `brew install python-tk` on Mac).
+*   **Error: "ModuleNotFoundError: No module named 'tkinter'" (or 'No module named \_tkinter')**
+    Tkinter is the GUI toolkit. It ships built-in with the [python.org](https://www.python.org/downloads/) installer, but **Homebrew's Python does not include it by default**. If you're on a Mac using Homebrew Python, install it with:
+    ```bash
+    brew install python-tk@3.11
+    ```
+    No need to recreate your venv afterward — just re-run `python silkscan_gui.py`. (If it still isn't found, delete and recreate the `.venv` as described in Section 2 so it re-links against the now-Tk-enabled Python.) The simplest way to avoid this entirely is to use the official python.org Python 3.11 installer.
 *   **The point cloud looks stretched or flat.**
     This means your scaling parameters (`mm / frame` or `pixels / mm`) are incorrect. If you didn't have a `manifest.json`, you will need to manually adjust these values in the GUI based on your physical camera setup.

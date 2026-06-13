@@ -219,8 +219,19 @@ class SilkscanGUI:
 
             method = self.method_var.get()
             output_path = self.output_path_var.get()
-            os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
-            
+            output_dir = os.path.dirname(os.path.abspath(output_path))
+            os.makedirs(output_dir, exist_ok=True)
+
+            # Write a manifest.json next to the output so the scaling parameters
+            # used for this scan are preserved (and auto-loaded on re-run).
+            manifest_out_path = os.path.join(output_dir, 'manifest.json')
+            try:
+                with open(manifest_out_path, 'w') as f:
+                    json.dump(manifest, f, indent=2)
+                print(f"Wrote manifest to {manifest_out_path}")
+            except Exception as e:
+                print(f"Warning: could not write manifest.json: {e}")
+
             if method == "Steger":
                 self.status_var.set("Extracting 3D Point Cloud (Steger). Please wait...")
                 config = silkscan.Config(
