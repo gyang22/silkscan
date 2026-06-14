@@ -28,24 +28,24 @@ def viewer_process(pcd_path, bounds_file):
     import os
     import time
     
+    # Fixed, high-contrast color for the points so they stay clearly visible
+    # against the white preview background (strength-based grayscale would make
+    # high-strength points blend into the background).
+    PREVIEW_COLOR = [0.0, 0.2, 0.8]
+
     pcd_array = np.load(pcd_path)
     pcd = o3d.geometry.PointCloud()
     if len(pcd_array) > 0:
         pcd.points = o3d.utility.Vector3dVector(pcd_array[:, :3])
-        if pcd_array.shape[1] >= 8:
-            strengths = pcd_array[:, 7]
-            denom = strengths.max() - strengths.min() + 1e-6
-            norm_s = (strengths - strengths.min()) / denom
-            colors = np.column_stack((norm_s, norm_s, norm_s))
-            pcd.colors = o3d.utility.Vector3dVector(colors)
-    
+        pcd.paint_uniform_color(PREVIEW_COLOR)
+
     vis = o3d.visualization.Visualizer()
     vis.create_window("Silkscan 3D Preview (Legacy Mode)", width=1024, height=768)
     vis.add_geometry(pcd)
     
     # Optional: Set a nice background and point size
     opt = vis.get_render_option()
-    opt.background_color = np.asarray([0.1, 0.1, 0.1])
+    opt.background_color = np.asarray([1.0, 1.0, 1.0])
     opt.point_size = 2.0
     
     last_bounds = None
@@ -70,13 +70,7 @@ def viewer_process(pcd_path, bounds_file):
                 # Open3D legacy visualizer crashes if point cloud has 0 points
                 if len(filtered) > 0:
                     pcd.points = o3d.utility.Vector3dVector(filtered[:, :3])
-                    if pcd_array.shape[1] >= 8:
-                        strengths = filtered[:, 7]
-                        denom = strengths.max() - strengths.min() + 1e-6
-                        norm_s = (strengths - strengths.min()) / denom
-                        colors = np.column_stack((norm_s, norm_s, norm_s))
-                        pcd.colors = o3d.utility.Vector3dVector(colors)
-                    
+                    pcd.paint_uniform_color(PREVIEW_COLOR)
                     vis.update_geometry(pcd)
                 last_bounds = bounds
                 
@@ -141,13 +135,17 @@ class LegacyEditorApp:
                 max_val += 1
                 
             var = tk.DoubleVar(value=self.bounds[key])
-            
+
+            value_label = ttk.Label(frame, text=f"{self.bounds[key]:.2f}", width=8, anchor=tk.E)
+
             def on_change(v):
                 self.bounds[key] = float(v)
+                value_label.config(text=f"{float(v):.2f}")
                 self.write_bounds()
-                
+
             slider = ttk.Scale(frame, from_=min_val, to=max_val, variable=var, orient=tk.HORIZONTAL, command=on_change)
             slider.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+            value_label.pack(side=tk.LEFT)
 
         make_slider("X Min", 'x_min', self.bounds['x_min'], self.bounds['x_max'])
         make_slider("X Max", 'x_max', self.bounds['x_min'], self.bounds['x_max'])

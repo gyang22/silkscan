@@ -295,37 +295,17 @@ def run_o3d_editor(pcd_array, method, output_path):
     import numpy as np
     import os
     import sys
-    
-    editor_script = os.path.join(os.path.dirname(__file__), 'silkscan', 'o3d_editor_app.py')
+
+    # The legacy editor (Tkinter controls + Open3D preview) is the only editor
+    # we use. The modern Open3D GUI editor was dropped because its sliders are
+    # sluggish and it crashes when saving all thresholds.
     legacy_script = os.path.join(os.path.dirname(__file__), 'silkscan', 'legacy_editor_app.py')
-    
-    try:
-        import open3d.visualization.gui as gui
-        python_exe = sys.executable
-        use_legacy = False
-    except ModuleNotFoundError:
-        print("Warning: open3d.visualization.gui not found in your conda environment.")
-        print("Using robust Legacy Mode Editor...")
-        python_exe = sys.executable
-        use_legacy = True
-        
+
     temp_data = output_path + ".temp.npy"
     np.save(temp_data, pcd_array)
-    
+
     try:
-        if not use_legacy:
-            result = subprocess.run([python_exe, editor_script, temp_data, method, output_path])
-            if result.returncode != 0:
-                print(f"\n================================")
-                print(f"CRASH DETECTED (Exit code: {result.returncode})")
-                print(f"The modern 3D Editor failed to launch on this computer.")
-                print(f"Automatically falling back to the robust Legacy Editor...")
-                print(f"================================\n")
-                use_legacy = True
-                
-        if use_legacy:
-            subprocess.run([sys.executable, legacy_script, temp_data, method, output_path])
-            
+        subprocess.run([sys.executable, legacy_script, temp_data, method, output_path])
     finally:
         if os.path.exists(temp_data):
             os.remove(temp_data)
